@@ -1,5 +1,5 @@
 # Arguments
-ARCH ?= x86_64
+ARCH ?= riscv64
 MODE ?= release
 LOG ?= warn
 RVM ?= off

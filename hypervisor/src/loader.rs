@@ -44,9 +44,23 @@ pub fn get_app_data_by_name(name: &str) -> Option<&'static [u8]> {
 
 pub fn list_apps() {
     println!("/**** APPS ****");
+    println!("");
     let app_count = get_app_count();
     for i in 0..app_count {
         println!("{}", get_app_name(i));
     }
-    println!("**************/");
+}
+
+pub fn get_guest_count() -> usize {
+    0
+}
+
+#[allow(unused)]
+pub fn list_guests() {
+    println!("/**** GUEST OSES ****");
+    println!("");
+    let guest_count = get_guest_count();
+    for i in 0..guest_count {
+        println!("");
+    }
 }

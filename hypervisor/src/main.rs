@@ -43,35 +43,26 @@ fn clear_bss() {
 }
 
 const LOGO: &str = r"
-NN   NN  iii               bb        OOOOO    SSSSS
-NNN  NN       mm mm mmmm   bb       OO   OO  SS
-NN N NN  iii  mmm  mm  mm  bbbbbb   OO   OO   SSSSS
-NN  NNN  iii  mmm  mm  mm  bb   bb  OO   OO       SS
-NN   NN  iii  mmm  mm  mm  bbbbbb    OOOO0    SSSSS
-              ___    ____    ___    ___
-             |__ \  / __ \  |__ \  |__ \
-             __/ / / / / /  __/ /  __/ /
-            / __/ / /_/ /  / __/  / __/
-           /____/ \____/  /____/ /____/
+ _          _   _                       
+| |__   ___| | | |_   _ _ __   ___ _ __ 
+| '_ \ / __| |_| | | | | '_ \ / _ \ '__|
+| | | | (__|  _  | |_| | |_) |  __/ |   
+|_| |_|\___|_| |_|\__, | .__/ \___|_|   
+                  |___/|_|              
 ";
 
 #[no_mangle]
 pub fn rust_main() -> ! {
     clear_bss();
     drivers::init_early();
-    println!("{}", LOGO);
-    println!(
-        "\
-        arch = {}\n\
-        platform = {}\n\
-        build_mode = {}\n\
-        log_level = {}\n\
-        ",
-        option_env!("ARCH").unwrap_or(""),
-        option_env!("PLATFORM").unwrap_or(""),
-        option_env!("MODE").unwrap_or(""),
-        option_env!("LOG").unwrap_or(""),
-    );
+
+    print!("{}\n", LOGO);
+    
+    println!("Start HyperVisor");
+    println!("arch = {}", option_env!("ARCH").unwrap_or(""));
+    println!("platform = {}", option_env!("PLATFORM").unwrap_or(""));
+    println!("build_mode = {}", option_env!("MODE").unwrap_or(""));
+    println!("log_level = {}", option_env!("LOG").unwrap_or(""));
 
     mm::init_heap_early();
     logging::init();
@@ -87,6 +78,13 @@ pub fn rust_main() -> ! {
     percpu::init_percpu();
     timer::init();
     task::init();
+
+    // 输出 APP 还有 GUEST OS 的名字
+    print!("\n");
     loader::list_apps();
+    println!("");
+    loader::list_guests();
+    print!("\n");
+    
     task::run();
 }
