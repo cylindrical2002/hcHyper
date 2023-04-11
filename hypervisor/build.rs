@@ -9,17 +9,20 @@ fn main() {
     println!("cargo:rerun-if-changed=.makeargs");
 
     let arch = std::env::var("CARGO_CFG_TARGET_ARCH").unwrap();
-    let platform = if cfg!(feature = "platform-pc") {
-        "pc"
-    } else if cfg!(feature = "platform-pc-rvm") {
-        "pc-rvm"
-    } else if cfg!(feature = "platform-qemu-virt-arm") {
-        "qemu-virt-arm"
-    } else if cfg!(feature = "platform-qemu-virt-riscv") {
+    let platform = if cfg!(feature = "platform-qemu-virt-riscv") {
         "qemu-virt-riscv"
-    } else if cfg!(feature = "platform-rvm-guest-x86_64") {
-        "rvm-guest-x86_64"
-    } else {
+    } 
+    // TODO: 加回 x86_64 aarch64 支持
+    // else if cfg!(feature = "platform-pc") {
+    //     "pc"
+    // } else if cfg!(feature = "platform-pc-rvm") {
+    //     "pc-rvm"
+    // } else if cfg!(feature = "platform-qemu-virt-arm") {
+    //     "qemu-virt-arm"
+    // } else if cfg!(feature = "platform-rvm-guest-x86_64") {
+    //     "rvm-guest-x86_64"
+    // } 
+    else {
         panic!("Unsupported platform!");
     };
 

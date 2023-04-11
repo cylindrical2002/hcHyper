@@ -1,7 +1,8 @@
 cfg_if! {
-    if #[cfg(any(target_arch = "riscv32", target_arch = "riscv64"))] {
-        mod riscv;
-        pub use self::riscv::*;
+    // HACK: 暂时不再支持 RV32 架构
+    if #[cfg(target_arch = "riscv64")] {
+        mod riscv64;
+        pub use self::riscv64::*;
     } 
     // TODO: 添加回 x86_64 aarch64 支持
     // else if #[cfg(target_arch = "x86_64")] {
