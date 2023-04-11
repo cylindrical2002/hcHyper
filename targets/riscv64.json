@@ -20,4 +20,4 @@
     },
     "relocation-model": "static",
     "target-pointer-width": "64"
-  }
+}
