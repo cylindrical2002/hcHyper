@@ -59,8 +59,9 @@ impl PhysAddr {
 
 impl VirtAddr {
     pub const fn new(va: usize) -> Self {
+        // TODO: 添加回 x86_64 aarch64 支持
         if cfg!(any(
-            target_arch = "x86_64",
+            // target_arch = "x86_64",
             target_arch = "riscv32",
             target_arch = "riscv64"
         )) {
@@ -69,18 +70,20 @@ impl VirtAddr {
             if (va & top_mask) != 0 && (va & top_mask) != top_mask {
                 panic!("invalid VA!")
             }
-        } else if cfg!(target_arch = "aarch64") {
-            // Top 16 bits must be all 0s or all 1s.
-            let top_bits = va >> VA_MAX_BITS;
-            if top_bits != 0 && top_bits != 0xffff {
-                panic!("invalid VA!")
-            }
-        }
+        } 
+        // else if cfg!(target_arch = "aarch64") {
+        //     // Top 16 bits must be all 0s or all 1s.
+        //     let top_bits = va >> VA_MAX_BITS;
+        //     if top_bits != 0 && top_bits != 0xffff {
+        //         panic!("invalid VA!")
+        //     }
+        // }
         Self(va)
     }
     pub const fn new_extended(va: usize) -> Self {
+        // TODO: 添加回 x86_64 aarch64 支持
         if cfg!(any(
-            target_arch = "x86_64",
+            // target_arch = "x86_64",
             target_arch = "riscv32",
             target_arch = "riscv64"
         )) {

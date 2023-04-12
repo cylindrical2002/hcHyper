@@ -178,13 +178,17 @@ impl MemorySet {
             header::Type::Executable,
             "ELF is not an executable object"
         );
-        let expect_arch = if cfg!(target_arch = "x86_64") {
-            header::Machine::X86_64
-        } else if cfg!(target_arch = "aarch64") {
-            header::Machine::AArch64
-        } else if cfg!(target_arch = "riscv64") {
+        // 这个变量仅仅用于检查 app 与操作系统是否匹配
+        let expect_arch = if cfg!(target_arch = "riscv64") {
             header::Machine::RISC_V
-        } else {
+        } 
+        // TODO: 添加回 x86_64 aarch64 的支持
+        // else if cfg!(target_arch = "x86_64") {
+        //     header::Machine::X86_64
+        // } else if cfg!(target_arch = "aarch64") {
+        //     header::Machine::AArch64
+        // }
+        else {
             panic!("Unsupported architecture!");
         };
         assert_eq!(

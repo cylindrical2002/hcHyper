@@ -1,5 +1,5 @@
-#![cfg_attr(not(test), no_std)]
-#![cfg_attr(not(test), no_main)]
+#![no_std]
+#![no_main]
 #![feature(asm_const, naked_functions)]
 #![feature(panic_info_message, alloc_error_handler)]
 #![feature(const_refs_to_cell)]
