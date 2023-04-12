@@ -1,6 +1,7 @@
 #[macro_use]
 mod macros;
 
+// FIXME: 以后可以抛弃riscv库。
 mod context;
 mod page_table;
 mod percpu;

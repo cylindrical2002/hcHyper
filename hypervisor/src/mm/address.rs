@@ -59,7 +59,7 @@ impl PhysAddr {
 
 impl VirtAddr {
     pub const fn new(va: usize) -> Self {
-        // TODO: 添加回 x86_64 aarch64 支持
+        // TODO: 加回 x86_64 aarch64 支持
         if cfg!(any(
             // target_arch = "x86_64",
             target_arch = "riscv32",
@@ -81,7 +81,7 @@ impl VirtAddr {
         Self(va)
     }
     pub const fn new_extended(va: usize) -> Self {
-        // TODO: 添加回 x86_64 aarch64 支持
+        // TODO: 加回 x86_64 aarch64 支持
         if cfg!(any(
             // target_arch = "x86_64",
             target_arch = "riscv32",

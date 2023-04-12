@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 
-// 中间几种从未用过，我们事实上只需要在 HyperVisor 层支持 Timer, PutChar, GetChar, Shutdown 即可
+// 中间几种从未用过
+// 我们事实上只需要在 HyperVisor 层支持 Timer, PutChar, GetChar, Shutdown 即可
 const SBI_SET_TIMER: usize = 0;
 const SBI_CONSOLE_PUTCHAR: usize = 1;
 const SBI_CONSOLE_GETCHAR: usize = 2;
@@ -26,7 +27,7 @@ fn sbi_call(which: usize, arg0: usize, arg1: usize, arg2: usize) -> usize {
 }
 
 pub fn set_timer(stime_value: u64) {
-    // TODO: 添加回 riscv32 的支持
+    // TODO: 加回 riscv32 的支持
     // #[cfg(target_arch = "riscv32")]
     // sbi_call(
     //     SBI_SET_TIMER,

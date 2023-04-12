@@ -144,6 +144,9 @@ impl MemorySet {
         }
     }
 
+    /*
+        从内核页表中的一部分克隆一个用户页表
+     */
     pub fn new() -> Self {
         Self {
             pt: KERNEL_ASPACE.pt.clone_from(
@@ -161,7 +164,7 @@ impl MemorySet {
                 self.pt.map_area(e.insert(area));
             } else {
                 panic!(
-                    "MemorySet::insert: MepArea starts from {:#x?} is existed!",
+                    "MemorySet::insert: MapArea starts from {:#x?} is existed!",
                     area.start
                 );
             }
@@ -182,7 +185,7 @@ impl MemorySet {
         let expect_arch = if cfg!(target_arch = "riscv64") {
             header::Machine::RISC_V
         } 
-        // TODO: 添加回 x86_64 aarch64 的支持
+        // TODO: 加回 x86_64 aarch64 的支持
         // else if cfg!(target_arch = "x86_64") {
         //     header::Machine::X86_64
         // } else if cfg!(target_arch = "aarch64") {

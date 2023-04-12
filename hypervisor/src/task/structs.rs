@@ -301,6 +301,7 @@ impl<'a> CurrentTask<'a> {
     }
 
     pub fn yield_now(&self) {
+        // switch to next
         TASK_MANAGER.lock().yield_current(self);
     }
 

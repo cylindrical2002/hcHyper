@@ -35,7 +35,7 @@ buddy_system_allocator = { version = "0.8", default-features = false }
 # cortex-a = "7.2"
 
 [target.'cfg(target_arch = "riscv64")'.dependencies]
-riscv = "0.8"
+riscv = { git = "https://github.com/rcore-os/riscv", features = ["inline-asm"] }
 
 [build-dependencies]
 toml = "0.5"

@@ -24,12 +24,16 @@ fn riscv_trap_handler(tf: &mut TrapFrame, from_user: bool) {
     trace!("trap {:?} @ {:#x}: {:#x?}", scause.cause(), tf.sepc, tf);
     match scause.cause() {
         Trap::Exception(E::UserEnvCall) => {
+            // 这里应该先判断 Ecall 前的 Virt 状态变量
+            // 如果这个 Ecall 是来自于 User Mode，则响应 syscall, 
+            // 如果这个 Ecall 是来自于 Virtual User Mode，则响应 panic!
             tf.sepc += 4;
             tf.regs.a0 = syscall(tf, tf.regs.a7, tf.regs.a0, tf.regs.a1, tf.regs.a2) as _;
         }
         Trap::Exception(E::LoadPageFault)
         | Trap::Exception(E::StorePageFault)
         | Trap::Exception(E::InstructionPageFault) => {
+            // 这里应该先判断 PageFault 前的 Virt 状态变量
             if from_user {
                 warn!(
                     "Page Fault @ {:#x}, stval={:#x}, scause={}, kernel killed it.",
@@ -46,6 +50,16 @@ fn riscv_trap_handler(tf: &mut TrapFrame, from_user: bool) {
                     scause.code(),
                 );
             }
+        }
+        Trap::Exception(E::LoadGuestPageFault) 
+        | Trap::Exception(E::StoreGuestPageFault) 
+        | Trap::Exception(E::InstructionGuestPageFault) => {
+            // 来自于VS-mode的PageFault异常            
+            panic!("Unsupported ENV CALL");     
+        }
+        Trap::Exception(E::VirtualSupervisorEnvCall) => {
+            // 来自于VS-mode的异常，应当由HS-mode处理。
+            panic!("Unsupported ENV CALL");
         }
         Trap::Interrupt(_) => task::handle_irq(scause.bits()),
         _ => {

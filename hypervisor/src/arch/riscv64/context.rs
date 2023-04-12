@@ -112,6 +112,11 @@ impl TrapFrame {
     }
 }
 
+/*
+    TaskContext 目前是进程的 Context，
+    还需要分离实现一个 GuestContext
+ */
+
 #[repr(C)]
 #[derive(Debug, Default)]
 pub struct TaskContext {
