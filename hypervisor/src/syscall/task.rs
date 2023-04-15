@@ -1,4 +1,4 @@
-use crate::arch::TrapFrame;
+use crate::arch::ProcessTrapFrame;
 use crate::mm::{UserInPtr, UserOutPtr};
 use crate::task::{current, spawn_task};
 
@@ -17,14 +17,14 @@ pub fn sys_getpid() -> isize {
     current().pid().as_usize() as isize
 }
 
-pub fn sys_clone(newsp: usize, tf: &TrapFrame) -> isize {
+pub fn sys_clone(newsp: usize, tf: &ProcessTrapFrame) -> isize {
     let new_task = current().new_clone(newsp, tf);
     let pid = new_task.pid().as_usize() as isize;
     spawn_task(new_task);
     pid
 }
 
-pub fn sys_fork(tf: &TrapFrame) -> isize {
+pub fn sys_fork(tf: &ProcessTrapFrame) -> isize {
     let new_task = current().new_fork(tf);
     let pid = new_task.pid().as_usize() as isize;
     spawn_task(new_task);
@@ -32,7 +32,7 @@ pub fn sys_fork(tf: &TrapFrame) -> isize {
 }
 
 // 应当有一个对应的 hyper_exec
-pub fn sys_exec(path: UserInPtr<u8>, tf: &mut TrapFrame) -> isize {
+pub fn sys_exec(path: UserInPtr<u8>, tf: &mut ProcessTrapFrame) -> isize {
     let (path_buf, len) = path.read_str::<MAX_STR_LEN>();
     let path = core::str::from_utf8(&path_buf[..len]).unwrap();
     current().exec(path, tf)

@@ -32,19 +32,22 @@ pub fn main() -> i32 {
                         // child process
                         let path = core::str::from_utf8(&line[..cursor]).unwrap();
                         if exec(path) < 0 {
-                            println!("command not found: {:?}", path);
-                            return -4;
+                            // if hyper_exec(path) < 0 {
+                                println!("command not found: {:?}", path);
+                                return -4;
+                            // }
                         }
                         unreachable!();
                     } else {
                         let mut exit_code = 0;
+                        // 这里的 waitpid 同时也要兼容 Guest
                         let exit_pid = waitpid(pid, Some(&mut exit_code), 0);
                         assert_eq!(pid, exit_pid);
                         println!("Shell: Process {} exited with code {}", pid, exit_code);
                     }
                     cursor = 0;
                 }
-                print!(">> ");
+                print!("[Application] >> ");
             }
             BS | DL => {
                 if cursor > 0 {

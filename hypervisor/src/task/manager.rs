@@ -6,14 +6,15 @@ use super::structs::{CurrentTask, Task, TaskState, ROOT_TASK};
 use crate::percpu::PerCpu;
 use crate::sync::{LazyInit, SpinNoIrqLock};
 use crate::timer::{current_time, TimeValue};
-
-pub struct TaskManager {
-    scheduler: Scheduler,
-}
+use crate::arch::Context;
 
 /*
     TaskManager 可以 Manage 一个 Process, 也可以 Manage 一个 Guest OS
  */
+
+pub struct TaskManager {
+    scheduler: Scheduler,
+}
 
 impl TaskManager {
     fn new() -> Self {
@@ -26,12 +27,12 @@ impl TaskManager {
         self.scheduler.timer_tick();
     }
 
-    pub fn spawn(&mut self, t: Arc<Task>) {
+    pub fn spawn(&mut self, t: Arc<dyn Task>) {
         assert!(t.state() == TaskState::Ready);
         self.scheduler.push_ready_task_back(t);
     }
 
-    fn switch_to(&self, curr_task: &Arc<Task>, next_task: Arc<Task>) {
+    fn switch_to(&self, curr_task: &Arc<dyn Task>, next_task: Arc<dyn Task>) {
         trace!(
             "context switch: {:?} -> {:?}",
             curr_task.pid(),
@@ -52,7 +53,12 @@ impl TaskManager {
 
         unsafe {
             PerCpu::set_current_task(next_task);
-            (*curr_ctx_ptr).switch_to(&*next_ctx_ptr);
+            if (*next_ctx_ptr).is_process() {
+                (*curr_ctx_ptr).switch_to_process(&*next_ctx_ptr);
+            } else {
+                // 切换到 Guest OS 中
+                // (*curr_ctx_ptr).switch_to_guest(&*next_ctx_ptr);
+            }
         }
     }
 
@@ -62,6 +68,7 @@ impl TaskManager {
             // let `next_task` hold its ownership to avoid clone
             self.switch_to(curr_task, next_task);
         } else {
+            // Clone 一个 IDLE Task 之后切过去
             self.switch_to(curr_task, PerCpu::idle_task().clone());
         }
     }
@@ -76,7 +83,7 @@ impl TaskManager {
         self.resched(curr_task);
     }
 
-    pub fn unblock_task(&mut self, task: Arc<Task>) -> bool {
+    pub fn unblock_task(&mut self, task: Arc<dyn Task>) -> bool {
         if task.state() == TaskState::Sleeping {
             task.set_state(TaskState::Ready);
             self.scheduler.push_ready_task_front(task);

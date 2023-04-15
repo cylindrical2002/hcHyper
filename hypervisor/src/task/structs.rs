@@ -5,7 +5,7 @@ use core::sync::atomic::{AtomicBool, AtomicI32, AtomicU8, AtomicUsize, Ordering}
 use super::manager::{TaskLockedCell, TASK_MANAGER};
 use super::schedule::SchedulerState;
 use super::wait_queue::WaitCurrent;
-use crate::arch::{instructions, TaskContext, TrapFrame};
+use crate::arch::{instructions, Context, ProcessContext, ProcessTrapFrame};
 use crate::config::KERNEL_STACK_SIZE;
 use crate::loader;
 use crate::mm::{kernel_aspace, MemorySet, VirtAddr};
@@ -13,46 +13,22 @@ use crate::percpu::PerCpu;
 use crate::sync::{LazyInit, Mutex};
 use crate::timer::TimeValue;
 
-pub(super) static ROOT_TASK: LazyInit<Arc<Task>> = LazyInit::new();
+// pub trait Task;
+
+pub(super) static ROOT_TASK: LazyInit<Arc<dyn Task>> = LazyInit::new();
 
 #[derive(Debug)]
 enum EntryState {
     Kernel { pc: usize, arg: usize },
-    User(Box<TrapFrame>),
+    User(Box<ProcessTrapFrame>),
 }
 
+/*
+    TaskId 是当前 hypervisor 中任务编号
+    对 Guest 和 Process 都适用
+ */
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub struct TaskId(usize);
-
-#[repr(u8)]
-#[derive(Debug, Clone, Copy, Eq, PartialEq)]
-pub enum TaskState {
-    Ready = 1,
-    Running = 2,
-    Sleeping = 3,
-    Zombie = 4,
-}
-
-pub struct Task {
-    id: TaskId,
-    is_kernel: bool,
-    is_shared: bool,
-    entry: EntryState,
-
-    state: AtomicU8,
-    exit_code: AtomicI32,
-    need_resched: AtomicBool,
-    sched_state: SchedulerState,
-
-    kstack: Stack<KERNEL_STACK_SIZE>,
-    ctx: TaskLockedCell<TaskContext>,
-
-    pub(super) wait_children_exit: WaitCurrent,
-
-    vm: Option<Arc<Mutex<MemorySet>>>,
-    pub(super) parent: Mutex<Weak<Task>>,
-    pub(super) children: Mutex<Vec<Arc<Task>>>,
-}
 
 impl TaskId {
     const IDLE_TASK_ID: Self = Self(0);
@@ -73,6 +49,19 @@ impl From<usize> for TaskId {
     }
 }
 
+/*
+    TaskState 是当前 hypervisor 中任务状态
+    对 Guest 和 Process 都适用  
+ */
+#[repr(u8)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub enum TaskState {
+    Ready = 1,
+    Running = 2,
+    Sleeping = 3,
+    Zombie = 4,
+}
+
 impl From<u8> for TaskState {
     fn from(state: u8) -> Self {
         match state {
@@ -85,7 +74,57 @@ impl From<u8> for TaskState {
     }
 }
 
-impl Task {
+/*
+    Task 派生出 Guest 和 Process
+    TaskManager 中仅仅管理 dyn Task, 不管任何详细的东西
+ */
+pub trait Task {
+    fn new_common(id: TaskId) -> Self;
+
+    fn id(&self) -> TaskId;
+    fn context(&self) -> &TaskLockedCell<dyn Context>;
+    fn state(&self) -> TaskState;
+    fn set_state(&self, state: TaskState);
+    fn exit_code(&self) -> i32;
+    fn set_exit_code(&self, exit_code: i32);
+
+    // 以下是与Scheduler相关的函数
+    fn need_resched(&self) -> bool;
+    fn clear_need_resched(&self);
+    fn set_need_resched(&self);
+    fn sched_state(&self) -> &SchedulerState;
+
+    fn process(&mut self) -> &mut Process;
+    fn is_process(&self) -> bool;
+    fn guest(&mut self) -> &mut Guest;
+    fn is_guest(&self) -> bool;
+}
+
+pub struct Process {
+    id: TaskId,
+    is_kernel: bool,
+    is_shared: bool,
+    entry: EntryState,
+
+    state: AtomicU8,
+    exit_code: AtomicI32,
+    need_resched: AtomicBool,
+    sched_state: SchedulerState,
+
+    kstack: Stack<KERNEL_STACK_SIZE>,
+    ctx: TaskLockedCell<ProcessContext>,
+
+    pub(super) wait_children_exit: WaitCurrent,
+
+    vm: Option<Arc<Mutex<MemorySet>>>,
+    pub(super) parent: Mutex<Weak<Process>>,
+    pub(super) children: Mutex<Vec<Arc<Process>>>,
+}
+
+impl Task for Process {
+
+    // 初始化
+
     fn new_common(id: TaskId) -> Self {
         Self {
             id,
@@ -99,7 +138,7 @@ impl Task {
             sched_state: SchedulerState::default(),
 
             kstack: Stack::default(),
-            ctx: TaskLockedCell::new(TaskContext::default()),
+            ctx: TaskLockedCell::new(ProcessContext::default()),
 
             wait_children_exit: WaitCurrent::new(),
 
@@ -109,7 +148,73 @@ impl Task {
         }
     }
 
-    pub(super) fn add_child(self: &Arc<Self>, child: &Arc<Task>) {
+    // 获得值或设置值
+
+    fn id(&self) -> TaskId {
+        self.id
+    }
+
+    fn state(&self) -> TaskState {
+        self.state.load(Ordering::SeqCst).into()
+    }
+
+    fn context(&self) -> &TaskLockedCell<ProcessContext> {
+        &self.ctx
+    }
+
+    fn set_state(&self, state: TaskState) {
+        self.state.store(state as u8, Ordering::SeqCst)
+    }
+
+    fn exit_code(&self) -> i32 {
+        self.exit_code.load(Ordering::SeqCst)
+    }
+
+    fn set_exit_code(&self, exit_code: i32) {
+        self.exit_code.store(exit_code, Ordering::SeqCst)
+    }
+
+    // Scheduler 相关
+
+    fn need_resched(&self) -> bool {
+        self.need_resched.load(Ordering::SeqCst)
+    }
+
+    fn clear_need_resched(&self) {
+        self.need_resched.store(false, Ordering::SeqCst);
+    }
+
+    fn set_need_resched(&self) {
+        self.need_resched.store(true, Ordering::SeqCst);
+    }
+
+    fn sched_state(&self) -> &SchedulerState {
+        &self.sched_state
+    }
+
+    // 转换类型
+
+    fn process(&mut self) -> &mut Process {
+        self
+    }
+
+    fn is_process(&self) -> bool {
+        true
+    }
+
+    fn guest(&mut self) -> &mut Guest {
+        panic!("This is not a guest")
+    }
+
+    fn is_guest(&self) -> bool {
+        false
+    }
+
+}
+
+impl Process { 
+
+    pub(super) fn add_child(self: &Arc<Self>, child: &Arc<Process>) {
         *child.parent.lock() = Arc::downgrade(self);
         self.children.lock().push(child.clone());
     }
@@ -157,7 +262,7 @@ impl Task {
         let (entry, ustack_top) = vm.load_user(elf_data);
 
         let mut t = Self::new_common(TaskId::alloc());
-        t.entry = EntryState::User(Box::new(TrapFrame::new_user(entry, ustack_top, 0)));
+        t.entry = EntryState::User(Box::new(ProcessTrapFrame::new_user(entry, ustack_top, 0)));
         t.ctx
             .get_mut()
             .init(task_entry as _, t.kstack.top(), vm.page_table_root(), false);
@@ -168,7 +273,7 @@ impl Task {
         t
     }
 
-    pub fn new_clone(self: &Arc<Self>, newsp: usize, tf: &TrapFrame) -> Arc<Self> {
+    pub fn new_clone(self: &Arc<Self>, newsp: usize, tf: &ProcessTrapFrame) -> Arc<Self> {
         assert!(!self.is_kernel_task());
         let mut t = Self::new_common(TaskId::alloc());
         t.is_shared = true;
@@ -187,7 +292,7 @@ impl Task {
         t
     }
 
-    pub fn new_fork(self: &Arc<Self>, tf: &TrapFrame) -> Arc<Self> {
+    pub fn new_fork(self: &Arc<Self>, tf: &ProcessTrapFrame) -> Arc<Self> {
         assert!(!self.is_kernel_task());
         let mut t = Self::new_common(TaskId::alloc());
         let vm = self.vm.as_ref().unwrap().lock().dup();
@@ -200,10 +305,6 @@ impl Task {
         let t = Arc::new(t);
         self.add_child(&t);
         t
-    }
-
-    pub const fn pid(&self) -> TaskId {
-        self.id
     }
 
     pub const fn is_kernel_task(&self) -> bool {
@@ -222,35 +323,7 @@ impl Task {
         self.is_shared
     }
 
-    pub fn state(&self) -> TaskState {
-        self.state.load(Ordering::SeqCst).into()
-    }
-
-    pub(super) fn set_state(&self, state: TaskState) {
-        self.state.store(state as u8, Ordering::SeqCst)
-    }
-
-    pub fn exit_code(&self) -> i32 {
-        self.exit_code.load(Ordering::SeqCst)
-    }
-
-    pub(super) fn set_exit_code(&self, exit_code: i32) {
-        self.exit_code.store(exit_code, Ordering::SeqCst)
-    }
-
-    pub fn need_resched(&self) -> bool {
-        self.need_resched.load(Ordering::SeqCst)
-    }
-
-    pub(super) const fn context(&self) -> &TaskLockedCell<TaskContext> {
-        &self.ctx
-    }
-
-    pub(super) const fn sched_state(&self) -> &SchedulerState {
-        &self.sched_state
-    }
-
-    pub(super) fn traverse(self: &Arc<Self>, func: &impl Fn(&Arc<Task>)) {
+    pub(super) fn traverse(self: &Arc<Self>, func: &impl Fn(&Arc<Process>)) {
         func(self);
         for c in self.children.lock().iter() {
             c.traverse(func);
@@ -258,10 +331,14 @@ impl Task {
     }
 }
 
-impl Drop for Task {
+impl Drop for Process {
     fn drop(&mut self) {
-        debug!("Task({}) dropped", self.pid().as_usize());
+        debug!("Process({}) dropped", self.pid().as_usize());
     }
+}
+
+pub struct Guest {
+
 }
 
 fn task_entry() -> ! {
@@ -281,23 +358,26 @@ fn task_entry() -> ! {
     }
 }
 
-pub struct CurrentTask<'a>(pub &'a Arc<Task>);
+/*
+    以下实现的 current 函数主要是为了能够获得当前的Task
+ */
+pub struct CurrentTask<'a>(pub &'a Arc<dyn Task>);
 
 impl<'a> CurrentTask<'a> {
     pub(super) fn get() -> Self {
         PerCpu::current_task()
     }
 
-    pub fn clone_task(&self) -> Arc<Task> {
+    pub fn clone_task(&self) -> Arc<dyn Task> {
         self.0.clone()
     }
 
     pub fn clear_need_resched(&self) {
-        self.0.need_resched.store(false, Ordering::SeqCst);
+        self.0.clear_need_resched();
     }
 
     pub fn set_need_resched(&self) {
-        self.0.need_resched.store(true, Ordering::SeqCst);
+        self.0.set_need_resched();
     }
 
     pub fn yield_now(&self) {
@@ -319,14 +399,17 @@ impl<'a> CurrentTask<'a> {
         TASK_MANAGER.lock().exit_current(self, exit_code)
     }
 
-    pub fn exec(&self, path: &str, tf: &mut TrapFrame) -> isize {
-        assert!(!self.is_kernel_task());
+    /*
+        目前可以 exec 一个 Guest 还有一个 Process
+     */
+    pub fn exec(&self, path: &str, tf: &mut ProcessTrapFrame) -> isize {
+        assert!(!self.is_kernel_task()); // 唯一一个在 dyn Task 中使用 is_kernel_task 的地方
         assert_eq!(Arc::strong_count(self.vm.as_ref().unwrap()), 1);
         if let Some(elf_data) = loader::get_app_data_by_name(path) {
             let mut vm = self.vm.as_ref().unwrap().lock();
             vm.clear();
             let (entry, ustack_top) = vm.load_user(elf_data);
-            *tf = TrapFrame::new_user(entry, ustack_top, 0);
+            *tf = ProcessTrapFrame::new_user(entry, ustack_top, 0);
             instructions::flush_tlb_all();
             0
         } else {
@@ -334,6 +417,9 @@ impl<'a> CurrentTask<'a> {
         }
     }
 
+    /*
+        目前也可以 waitid 一个 Guest 还有一个 Process
+     */
     pub fn waitpid(&self, pid: isize, _options: u32) -> Option<(TaskId, i32)> {
         let mut found_pid = false;
         for t in self.children.lock().iter() {
@@ -365,12 +451,16 @@ impl<'a> CurrentTask<'a> {
 }
 
 impl<'a> core::ops::Deref for CurrentTask<'a> {
-    type Target = Arc<Task>;
+    type Target = Arc<dyn Task>;
     fn deref(&self) -> &Self::Target {
         self.0
     }
 }
 
+/*
+    Stack 是一个特殊的数据结构, 为 Kernel Stack 提供服务
+    TODO: 迁移到 utils 里
+ */
 struct Stack<const N: usize>(Box<[u8]>);
 
 impl<const N: usize> Stack<N> {

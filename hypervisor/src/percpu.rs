@@ -3,7 +3,7 @@ use alloc::sync::Arc;
 use crate::arch::{instructions, ArchPerCpu};
 use crate::config::MAX_CPUS;
 use crate::sync::{LazyInit, PerCpuData};
-use crate::task::{CurrentTask, Task};
+use crate::task::{CurrentTask, Task, Process};
 
 static CPUS: [LazyInit<PerCpu>; MAX_CPUS] = [LazyInit::new(); MAX_CPUS];
 
@@ -12,14 +12,14 @@ static CPUS: [LazyInit<PerCpu>; MAX_CPUS] = [LazyInit::new(); MAX_CPUS];
 pub struct PerCpu {
     self_vaddr: usize,
     id: usize,
-    idle_task: Arc<Task>,
-    current_task: PerCpuData<Arc<Task>>,
+    idle_task: Arc<dyn Task + Send + Sync>,
+    current_task: PerCpuData<Arc<dyn Task>>,
     arch: PerCpuData<ArchPerCpu>,
 }
 
 impl PerCpu {
     fn new(id: usize) -> Self {
-        let idle_task = Task::new_idle();
+        let idle_task = Process::new_idle();
         Self {
             self_vaddr: &CPUS[id] as *const _ as usize,
             id,
@@ -34,6 +34,7 @@ impl PerCpu {
     }
 
     fn current_mut<'a>() -> &'a mut Self {
+        // 这里似乎是要实现一个线程的调度
         unsafe { &mut *(instructions::thread_pointer() as *mut Self) }
     }
 
@@ -41,7 +42,7 @@ impl PerCpu {
         Self::current().id
     }
 
-    pub fn idle_task<'a>() -> &'a Arc<Task> {
+    pub fn idle_task<'a>() -> &'a Arc<dyn Task> {
         &Self::current().idle_task
     }
 
@@ -52,7 +53,7 @@ impl PerCpu {
         CurrentTask(unsafe { Self::current().current_task.as_ref() })
     }
 
-    pub unsafe fn set_current_task(task: Arc<Task>) {
+    pub unsafe fn set_current_task(task: Arc<dyn Task>) {
         // We must disable interrupts and task preemption when update this field.
         assert!(instructions::irqs_disabled());
         let old_task = core::mem::replace(Self::current().current_task.as_mut(), task);

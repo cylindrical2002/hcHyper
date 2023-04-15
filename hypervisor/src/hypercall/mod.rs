@@ -1,10 +1,15 @@
-use crate::arch::{TrapFrame, instructions};
+const HYPERCALL_READ: usize = 0;
+const HYPERCALL_WRITE: usize = 1;
 
-const HYPERCALL_EXEC: usize = 59;
+mod fs;
+
+use self::fs::*;
+use crate::arch::{ProcessTrapFrame, instructions};
+
 
 // TODO: 完善所有的 hypercall
 pub fn hypercall(
-    _tf: &mut TrapFrame,
+    _tf: &mut ProcessTrapFrame,
     hypercall_id: usize,
     arg0: usize,
     arg1: usize,
@@ -17,9 +22,8 @@ pub fn hypercall(
         hypercall_id, arg0, arg1, arg2
     );
     let ret = match hypercall_id {
-        HYPERCALL_EXEC => {
-            0
-        }
+        HYPERCALL_READ => hyper_read(arg0, arg1.into(), arg2),
+        HYPERCALL_WRITE => hyper_write(arg0, arg1.into(), arg2),
         _ => {
             warn!("Unsupported syscall_id: {}", hypercall_id);
             crate::task::current().exit(-1);

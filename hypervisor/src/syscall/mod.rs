@@ -18,10 +18,10 @@ mod time;
 use self::fs::*;
 use self::task::*;
 use self::time::*;
-use crate::arch::{instructions, TrapFrame};
+use crate::arch::{instructions, ProcessTrapFrame};
 
 pub fn syscall(
-    tf: &mut TrapFrame,
+    tf: &mut ProcessTrapFrame,
     syscall_id: usize,
     arg0: usize,
     arg1: usize,

@@ -56,6 +56,10 @@ pub fn exec(path: &str) -> isize {
     sys_exec(path)
 }
 
+pub fn hyper_exec(path: &str) -> isize {
+    -1
+}
+
 pub fn waitpid(pid: isize, exit_code: Option<&mut i32>, options: u32) -> isize {
     let exit_code_ptr = exit_code.map(|e| e as _).unwrap_or(core::ptr::null_mut());
     sys_waitpid(pid, exit_code_ptr, options)

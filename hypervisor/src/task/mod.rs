@@ -3,7 +3,7 @@ mod schedule;
 mod structs;
 mod wait_queue;
 
-pub use structs::{CurrentTask, Task, TaskId};
+pub use structs::{CurrentTask, Task, Process, Guest, TaskId};
 
 use alloc::sync::Arc;
 use core::sync::atomic::{AtomicBool, Ordering};
@@ -22,7 +22,7 @@ pub fn init() {
     println!("Initializing task manager...");
     manager::init();
 
-    ROOT_TASK.init_by(Task::new_kernel(
+    ROOT_TASK.init_by(Process::new_kernel(
         |_| loop {
             let curr_task = current();
             while curr_task.waitpid(-1, 0).is_some() {}
@@ -44,9 +44,9 @@ pub fn init() {
 
     let mut m = TASK_MANAGER.lock();
     m.spawn(ROOT_TASK.clone());
-    m.spawn(Task::new_kernel(test_kernel_task, 0xdead));
-    m.spawn(Task::new_kernel(test_kernel_task, 0xbeef));
-    m.spawn(Task::new_user("user_shell"));
+    m.spawn(Process::new_kernel(test_kernel_task, 0xdead));
+    m.spawn(Process::new_kernel(test_kernel_task, 0xbeef));
+    m.spawn(Process::new_user("user_shell"));
 
     TASK_INITED.store(true, Ordering::SeqCst);
 }
@@ -68,7 +68,7 @@ pub fn timer_tick_periodic() {
     TASK_MANAGER.lock().scheduler_timer_tick();
 }
 
-pub fn spawn_task(task: Arc<Task>) {
+pub fn spawn_task(task: Arc<dyn Task>) {
     TASK_MANAGER.lock().spawn(task);
 }
 

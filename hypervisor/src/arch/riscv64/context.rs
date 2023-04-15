@@ -1,125 +1,30 @@
 use core::arch::asm;
 
-use riscv::register::{sepc, sscratch};
-
 use crate::arch::instructions;
 use crate::mm::{PhysAddr, VirtAddr};
 
 include_asm_marcos!();
 
-#[repr(C)]
-#[derive(Debug, Default, Clone, Copy)]
-pub struct GeneralRegisters {
-    pub ra: usize,
-    pub sp: usize,
-    pub gp: usize, // only valid for user traps
-    pub tp: usize, // only valid for user traps
-    pub t0: usize,
-    pub t1: usize,
-    pub t2: usize,
-    pub s0: usize,
-    pub s1: usize,
-    pub a0: usize,
-    pub a1: usize,
-    pub a2: usize,
-    pub a3: usize,
-    pub a4: usize,
-    pub a5: usize,
-    pub a6: usize,
-    pub a7: usize,
-    pub s2: usize,
-    pub s3: usize,
-    pub s4: usize,
-    pub s5: usize,
-    pub s6: usize,
-    pub s7: usize,
-    pub s8: usize,
-    pub s9: usize,
-    pub s10: usize,
-    pub s11: usize,
-    pub t3: usize,
-    pub t4: usize,
-    pub t5: usize,
-    pub t6: usize,
-}
+/*
+    这里的 Context 对应着 rCore-Tutorial 中的 TrapContext
+ */
 
-#[repr(C)]
-#[derive(Debug, Default, Clone, Copy)]
-pub struct TrapFrame {
-    pub regs: GeneralRegisters,
-    pub sepc: usize,
-    pub sstatus: usize,
-}
-
-impl TrapFrame {
-    pub fn new_user(entry: VirtAddr, ustack_top: VirtAddr, arg0: usize) -> Self {
-        const SPIE: usize = 1 << 5;
-        const SUM: usize = 1 << 18;
-        Self {
-            regs: GeneralRegisters {
-                a0: arg0,
-                sp: ustack_top.as_usize(),
-                ..Default::default()
-            },
-            sepc: entry.as_usize(),
-            sstatus: SPIE | SUM,
-        }
-    }
-
-    pub const fn new_clone(&self, ustack_top: VirtAddr) -> Self {
-        let mut tf = *self;
-        tf.regs.sp = ustack_top.as_usize();
-        tf.regs.a0 = 0; // for child thread, clone returns 0
-        tf
-    }
-
-    pub const fn new_fork(&self) -> Self {
-        let mut tf = *self;
-        tf.regs.a0 = 0; // for child process, fork returns 0
-        tf
-    }
-
-    pub unsafe fn exec(&self, kstack_top: VirtAddr) -> ! {
-        info!(
-            "user task start: entry={:#x}, ustack={:#x}, kstack={:#x}",
-            self.sepc,
-            self.regs.sp,
-            kstack_top.as_usize(),
-        );
-        instructions::disable_irqs();
-        sscratch::write(kstack_top.as_usize());
-        sepc::write(self.sepc);
-        let kernel_tp_addr = kstack_top.as_usize() - core::mem::size_of::<TrapFrame>()
-            + memoffset::offset_of!(GeneralRegisters, tp);
-        asm!("
-            mv      sp, {tf}
-
-            LDR     t0, sp, 32
-            csrw    sstatus, t0
-
-            STR     tp, {kernel_tp_addr}, 0
-            LDR     gp, sp, 2
-            LDR     tp, sp, 3
-
-            POP_GENERAL_REGS
-            LDR     sp, sp, 1
-
-            sret",
-            tf = in(reg) self,
-            kernel_tp_addr = in(reg) kernel_tp_addr,
-            options(noreturn),
-        )
-    }
+pub trait Context{
+    // fn default() -> Self;
+    fn init(&mut self, entry: usize, kstack_top: VirtAddr, page_table_root: PhysAddr, _is_kernel: bool);
+    fn is_process(&self) -> bool;
+    fn switch_to_process(&mut self, next_ctx: &ProcessContext);
+    fn switch_to_guest(&mut self, next_ctx: &GuestContext);
 }
 
 /*
-    TaskContext 目前是进程的 Context，
+    ProcessContext 是进程的 Context，
     还需要分离实现一个 GuestContext
  */
 
 #[repr(C)]
-#[derive(Debug, Default)]
-pub struct TaskContext {
+#[derive(Debug)]
+pub struct ProcessContext {
     pub ra: usize, // return address (x1)
     pub sp: usize, // stack pointer (x2)
 
@@ -140,33 +45,64 @@ pub struct TaskContext {
     pub satp: usize,
 }
 
-impl TaskContext {
-    pub const fn default() -> Self {
+impl Default for ProcessContext{
+    fn default() -> Self {
         unsafe { core::mem::MaybeUninit::zeroed().assume_init() }
     }
+}
 
-    pub fn init(
+impl Context for ProcessContext{
+    fn init(
         &mut self,
         entry: usize,
         kstack_top: VirtAddr,
         page_table_root: PhysAddr,
-        _is_kernel: bool,
+        _is_kernel: bool
     ) {
         self.sp = kstack_top.as_usize();
         self.ra = entry;
         self.satp = page_table_root.as_usize();
     }
 
-    pub fn switch_to(&mut self, next_ctx: &Self) {
+    fn is_process(&self) -> bool {
+        true
+    }
+
+    fn switch_to_process(&mut self, next_ctx: &ProcessContext) {
         unsafe {
             instructions::set_user_page_table_root(next_ctx.satp);
-            context_switch(self, next_ctx)
+            context_switch(self, next_ctx);
         }
+    }
+
+    fn switch_to_guest(&mut self, next_ctx: &GuestContext) {
+        panic!("unsupported");
     }
 }
 
+pub struct GuestContext {
+    pub ra: usize, // return address (x1)
+    pub sp: usize, // stack pointer (x2)
+
+    pub s0: usize, // x8-x9
+    pub s1: usize,
+    
+    pub s2: usize, // x18-x27
+    pub s3: usize,
+    pub s4: usize,
+    pub s5: usize,
+    pub s6: usize,
+    pub s7: usize,
+    pub s8: usize,
+    pub s9: usize,
+    pub s10: usize,
+    pub s11: usize,
+
+    pub satp: usize,
+}
+
 #[naked]
-unsafe extern "C" fn context_switch(_current_task: &mut TaskContext, _next_task: &TaskContext) {
+unsafe extern "C" fn context_switch(_current_task: &mut ProcessContext, _next_task: &ProcessContext) {
     asm!(
         "
         // save old context (callee-saved registers)

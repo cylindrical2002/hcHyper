@@ -2,6 +2,7 @@
 mod macros;
 
 // FIXME: 以后可以抛弃riscv库。
+mod frame;
 mod context;
 mod page_table;
 mod percpu;
@@ -11,7 +12,8 @@ pub mod detect;
 pub mod config;
 pub mod instructions;
 
-pub use self::context::{TaskContext, TrapFrame};
+pub use self::context::{Context, ProcessContext};
+pub use self::frame::ProcessTrapFrame;
 pub use self::page_table::{PageTable, PageTableEntry};
 pub use self::percpu::ArchPerCpu;
 

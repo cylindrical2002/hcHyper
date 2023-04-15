@@ -5,7 +5,7 @@ use super::{current, Task};
 use crate::sync::SpinNoIrqLock;
 
 pub struct WaitCurrent {
-    current: SpinNoIrqLock<Option<Arc<Task>>>,
+    current: SpinNoIrqLock<Option<Arc<dyn Task>>>,
 }
 
 impl WaitCurrent {

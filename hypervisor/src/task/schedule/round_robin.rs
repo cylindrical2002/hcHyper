@@ -13,7 +13,7 @@ pub struct RRSchedulerState {
 }
 
 pub struct RRScheduler {
-    ready_queue: VecDeque<Arc<Task>>,
+    ready_queue: VecDeque<Arc<dyn Task>>,
 }
 
 impl RRSchedulerState {
@@ -35,17 +35,17 @@ impl SchedulerTrait for RRScheduler {
         }
     }
 
-    fn push_ready_task_back(&mut self, t: Arc<Task>) {
+    fn push_ready_task_back(&mut self, t: Arc<dyn Task>) {
         t.sched_state().reset();
         self.ready_queue.push_back(t);
     }
 
-    fn push_ready_task_front(&mut self, t: Arc<Task>) {
+    fn push_ready_task_front(&mut self, t: Arc<dyn Task>) {
         t.sched_state().reset();
         self.ready_queue.push_front(t);
     }
 
-    fn pick_next_task(&mut self) -> Option<Arc<Task>> {
+    fn pick_next_task(&mut self) -> Option<Arc<dyn Task>> {
         self.ready_queue.pop_front()
     }
 

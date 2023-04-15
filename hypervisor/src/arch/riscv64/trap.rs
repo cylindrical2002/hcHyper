@@ -2,14 +2,14 @@ use riscv::register::sstatus::{self, SPP};
 use riscv::register::scause::{self, Exception as E, Trap};
 use riscv::register::{mtvec::TrapMode, stval, stvec, hstatus};
 
-use super::TrapFrame;
+use super::ProcessTrapFrame;
 use crate::{hypercall::hypercall, syscall::syscall, task};
 
 include_asm_marcos!();
 
 core::arch::global_asm!(
     include_str!("trap.S"),
-    trapframe_size = const core::mem::size_of::<TrapFrame>(),
+    trapframe_size = const core::mem::size_of::<ProcessTrapFrame>(),
 );
 
 pub fn init() {
@@ -20,7 +20,7 @@ pub fn init() {
 }
 
 #[no_mangle]
-fn riscv_trap_handler(tf: &mut TrapFrame) {
+fn riscv_trap_handler(tf: &mut ProcessTrapFrame) {
     let scause = scause::read();
     trace!("trap {:?} @ {:#x}: {:#x?}", scause.cause(), tf.sepc, tf);
     match scause.cause() {
