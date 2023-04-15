@@ -47,7 +47,7 @@ pub fn set_timer(deadline: TimeValue, callback: impl FnOnce(TimeValue) + Send + 
 }
 
 pub fn handle_timer_irq() {
-    assert!(crate::arch::instructions::irqs_disabled());
+    assert!(crate::arch::instructions::irqs_disabled()); // 时间中断下不能再处理中断了
 
     let now_ns = current_time_nanos();
     let mut next_deadline = NEXT_PERIODIC_DEADLINE.load(Ordering::Acquire);

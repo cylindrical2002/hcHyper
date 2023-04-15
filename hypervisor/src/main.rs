@@ -14,10 +14,11 @@ extern crate log;
 
 #[macro_use]
 mod logging;
-
 mod arch;
 mod config;
 mod drivers;
+mod hypercall;
+mod lang_items;
 mod loader;
 mod mm;
 mod percpu;
@@ -27,9 +28,6 @@ mod syscall;
 mod task;
 mod timer;
 mod utils;
-
-#[cfg(not(test))]
-mod lang_items;
 
 fn clear_bss() {
     extern "C" {
@@ -57,12 +55,20 @@ pub fn rust_main() -> ! {
     drivers::init_early();
 
     print!("{}\n", LOGO);
-    
+
     println!("Start HyperVisor");
     println!("arch = {}", option_env!("ARCH").unwrap_or(""));
     println!("platform = {}", option_env!("PLATFORM").unwrap_or(""));
     println!("build_mode = {}", option_env!("MODE").unwrap_or(""));
     println!("log_level = {}", option_env!("LOG").unwrap_or(""));
+
+    // 检查是否支持 hypervisor extension
+    // TODO: 改用设备树检查
+    if !arch::detect::detect_h_extension() {
+        println!("no RISC-V hypervisor extension on current environment");
+    } else {
+        println!("RISC-V H ISA Available");
+    }
 
     mm::init_heap_early();
     logging::init();
@@ -71,12 +77,11 @@ pub fn rust_main() -> ! {
     arch::init();
     arch::init_percpu();
     percpu::init_percpu_early();
-
     mm::init();
     drivers::init();
-
     percpu::init_percpu();
     timer::init();
+
     task::init();
 
     // 输出 APP 还有 GUEST OS 的名字
@@ -85,6 +90,6 @@ pub fn rust_main() -> ! {
     println!("");
     loader::list_guests();
     print!("\n");
-    
+
     task::run();
 }

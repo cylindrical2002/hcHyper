@@ -1,7 +1,7 @@
 # Building
 TARGET := riscv64gc-unknown-none-elf
 MODE := release
-KERNEL_ELF := target/$(TARGET)/$(MODE)/os
+KERNEL_ELF := target/$(TARGET)/$(MODE)/hcminikernel
 KERNEL_BIN := $(KERNEL_ELF).bin
 DISASM_TMP := target/$(TARGET)/$(MODE)/asm
 
@@ -26,6 +26,7 @@ OBJCOPY := rust-objcopy --binary-architecture=riscv64
 DISASM ?= -x
 
 build: env $(KERNEL_BIN)
+	@cp $(KERNEL_ELF) ../../build/riscv64/
 
 env:
 	(rustup target list | grep "riscv64gc-unknown-none-elf (installed)") || rustup target add $(TARGET)
@@ -42,6 +43,7 @@ kernel:
 	@cargo build $(MODE_ARG)
 
 clean:
+	@make -C ../user clean
 	@cargo clean
 
 disasm: kernel

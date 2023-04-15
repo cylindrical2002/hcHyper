@@ -11,7 +11,7 @@ fn main() {
     let arch = std::env::var("CARGO_CFG_TARGET_ARCH").unwrap();
     let platform = if cfg!(feature = "platform-qemu-virt-riscv") {
         "qemu-virt-riscv"
-    } 
+    }
     // TODO: 加回 x86_64 aarch64 支持
     // else if cfg!(feature = "platform-pc") {
     //     "pc"
@@ -21,13 +21,14 @@ fn main() {
     //     "qemu-virt-arm"
     // } else if cfg!(feature = "platform-rvm-guest-x86_64") {
     //     "rvm-guest-x86_64"
-    // } 
+    // }
     else {
         panic!("Unsupported platform!");
     };
 
     parse_platform_config(&arch, platform).unwrap();
     link_app_data(&arch).unwrap();
+    link_guest_data(&arch).unwrap();
 }
 
 fn parse_platform_config(arch: &str, platform: &str) -> Result<()> {
@@ -133,6 +134,65 @@ app_{0}_end:",
 .global _app_count
 _app_count:
     .quad 0"
+        )?;
+    }
+    Ok(())
+}
+
+fn link_guest_data(arch: &str) -> Result<()> {
+    let guest_path = PathBuf::from("../guest/build/").join(arch);
+    let link_guest_path = PathBuf::from(std::env::var("OUT_DIR").unwrap()).join("link_guest.S");
+
+    if let Ok(dir) = read_dir(&guest_path) {
+        let mut guests = dir
+            .into_iter()
+            .map(|dir_entry| dir_entry.unwrap().file_name().into_string().unwrap())
+            .collect::<Vec<_>>();
+        guests.sort();
+
+        let mut f = File::create(link_guest_path)?;
+        writeln!(
+            f,
+            "
+.section .data
+.balign 8
+.global _guest_count
+_guest_count:
+.quad {}",
+            guests.len()
+        )?;
+        for i in 0..guests.len() {
+            writeln!(f, "    .quad guest_{}_name", i)?;
+            writeln!(f, "    .quad guest_{}_start", i)?;
+        }
+        writeln!(f, "    .quad guest_{}_end", guests.len() - 1)?;
+
+        for (idx, guest) in guests.iter().enumerate() {
+            println!("guest_{}: {}", idx, guest_path.join(guest).display());
+            writeln!(
+                f,
+                "
+guest_{0}_name:
+.string \"{1}\"
+.balign 8
+guest_{0}_start:
+.incbin \"{2}\"
+guest_{0}_end:",
+                idx,
+                guest,
+                guest_path.join(guest).display()
+            )?;
+        }
+    } else {
+        let mut f = File::create(link_guest_path)?;
+        writeln!(
+            f,
+            "
+.section .data
+.balign 8
+.global _guest_count
+_guest_count:
+.quad 0"
         )?;
     }
     Ok(())

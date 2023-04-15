@@ -132,9 +132,9 @@ impl Task {
 
     pub fn new_kernel(entry: fn(usize) -> usize, arg: usize) -> Arc<Self> {
         let mut t = Self::new_common(TaskId::alloc());
-        t.is_kernel = true;
+        t.is_kernel = true; // 唯一的内核进程？
         t.entry = EntryState::Kernel {
-            pc: entry as usize,
+            pc: entry as usize, // 取出了函数指针
             arg,
         };
         t.ctx.get_mut().init(

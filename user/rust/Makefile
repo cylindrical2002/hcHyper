@@ -2,14 +2,14 @@ ARCH ?= x86_64
 MODE ?= release
 
 ifeq ($(ARCH), x86_64)
-  target := x86_64-unknown-none
-  rust_flags := -C relocation-model=static
+	target := x86_64-unknown-none
+	rust_flags := -C relocation-model=static
 else ifeq ($(ARCH), aarch64)
-  target := aarch64-unknown-none-softfloat
+	target := aarch64-unknown-none-softfloat
 else ifeq ($(ARCH), riscv64)
-  target := riscv64imac-unknown-none-elf
+	target := riscv64imac-unknown-none-elf
 else
-  $(error Unsupported architecture "$(ARCH)")
+	$(error Unsupported architecture "$(ARCH)")
 endif
 
 target_dir := target/$(target)/$(MODE)
@@ -20,7 +20,7 @@ asms := $(patsubst %, %.asm, $(elfs))
 
 build_args := --target $(target) -Zbuild-std=core
 ifeq ($(MODE), release)
-  build_args += --release
+	build_args += --release
 endif
 
 OBJDUMP := rust-objdump -d --print-imm-hex --x86-asm-syntax=intel

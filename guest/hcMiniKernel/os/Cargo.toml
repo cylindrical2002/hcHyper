@@ -1,5 +1,5 @@
 [package]
-name = "os"
+name = "hcminikernel"
 version = "0.2.0"
 authors = ["Yifan Wu <shinbokuow@163.com>", "Yue Chen <chen-yue20@mails.tsinghua.edu.cn>"]
 edition = "2021"

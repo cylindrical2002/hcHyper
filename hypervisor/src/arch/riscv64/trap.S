@@ -51,7 +51,6 @@ trap_vector_base:
 .Lkernel_trap_entry:
     SAVE_REGS 0
     mv      a0, sp
-    li      a1, 0
     call    riscv_trap_handler
     RESTORE_REGS 0
     sret
@@ -59,7 +58,6 @@ trap_vector_base:
 .Luser_trap_entry:
     SAVE_REGS 1
     mv      a0, sp
-    li      a1, 1
     call    riscv_trap_handler
     RESTORE_REGS 1
     sret

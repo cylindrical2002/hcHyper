@@ -7,6 +7,7 @@ mod page_table;
 mod percpu;
 mod trap;
 
+pub mod detect;
 pub mod config;
 pub mod instructions;
 

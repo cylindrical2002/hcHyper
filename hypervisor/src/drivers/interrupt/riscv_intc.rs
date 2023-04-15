@@ -27,6 +27,7 @@ where
     F2: FnOnce() -> T,
     F3: FnOnce() -> T,
 {
+    // 分别根据类型不同执行三个函数
     match cause {
         S_SOFT => soft_op(),
         S_TIMER => timer_op(),
@@ -48,6 +49,7 @@ pub fn handle_irq(cause: usize) {
 pub fn register_handler(cause: usize, handler: IrqHandler) {
     with_cause(
         cause,
+        // 利用 lambda 表达式当作函数，初始化 handler
         || SOFT_HANDLER.init_by(handler),
         || TIMER_HANDLER.init_by(handler),
         || EXT_HANDLER.init_by(handler),
