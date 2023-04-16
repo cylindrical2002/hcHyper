@@ -137,18 +137,23 @@ pub fn run_next_app() -> ! {
     unsafe {
         app_manager.load_app(current_app);
     }
+    println!("[kernel] Load successful");
     app_manager.move_to_next_app();
     drop(app_manager);
     // before this we have to drop local variables related to resources manually
     // and release the resources
+    println!("[kernel] Next User Stack at: {:#x}", USER_STACK.get_sp());
+    let curr_trap_ctx = TrapContext::app_init_context(
+        APP_BASE_ADDRESS,
+        USER_STACK.get_sp(),
+    );
+    println!("[kernel] TrapContext at: {:#x}", &curr_trap_ctx as *const _ as usize);
+    // println!("KERNEL_PUSH_TEST, {:#x}", KERNEL_STACK.push_context(curr_trap_ctx) as *const _ as usize);
     extern "C" {
         fn __restore(cx_addr: usize);
     }
     unsafe {
-        __restore(KERNEL_STACK.push_context(TrapContext::app_init_context(
-            APP_BASE_ADDRESS,
-            USER_STACK.get_sp(),
-        )) as *const _ as usize);
+        __restore(KERNEL_STACK.push_context(curr_trap_ctx) as *const _ as usize);
     }
     panic!("Unreachable in batch::run_current_app!");
 }

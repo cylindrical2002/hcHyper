@@ -5,8 +5,10 @@
     csrr    t0, sepc
     csrr    t1, sstatus
     csrrw   t2, sscratch, zero          // save sp and zero scratch
+    csrr    t3, hstatus
     STR     t0, sp, 31
     STR     t1, sp, 32
+    STR     t3, sp, 33
     STR     t2, sp, 1
 
 .if \from_user == 1
@@ -29,8 +31,10 @@
 
     LDR     t0, sp, 31
     LDR     t1, sp, 32
+    LDR     t2, sp, 33
     csrw    sepc, t0
     csrw    sstatus, t1
+    csrw    hstatus, t2
 
     POP_GENERAL_REGS
     LDR     sp, sp, 1

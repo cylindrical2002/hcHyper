@@ -76,6 +76,7 @@ pub fn rust_main() -> ! {
 
     arch::init();
     arch::init_percpu();
+    arch::init_hypervisor();
     percpu::init_percpu_early();
     mm::init();
     drivers::init();

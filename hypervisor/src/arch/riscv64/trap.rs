@@ -43,7 +43,7 @@ fn riscv_trap_handler(tf: &mut TrapFrame) {
             if !hstatus.spv() {
                 let sstatus = sstatus::read();
                 if sstatus.spp() == SPP::User {
-                    warn!(
+                    println!(
                         "Page Fault @ {:#x}, stval={:#x}, scause={}, kernel killed it.",
                         tf.sepc,
                         stval::read(),
@@ -66,7 +66,7 @@ fn riscv_trap_handler(tf: &mut TrapFrame) {
         | Trap::Exception(E::StoreGuestPageFault)
         | Trap::Exception(E::InstructionGuestPageFault) => {
             // 来自于VS-mode的PageFault异常
-            warn!(
+            println!(
                 "Guest Page Fault @ {:#x}, stval={:#x}, scause={}, kernel killed it.",
                 tf.sepc,
                 stval::read(),

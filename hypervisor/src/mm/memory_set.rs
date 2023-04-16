@@ -145,8 +145,8 @@ impl MemorySet {
     }
 
     /*
-        从内核页表中的一部分克隆一个用户页表
-     */
+       从内核页表中的一部分克隆一个用户页表
+    */
     pub fn new() -> Self {
         Self {
             pt: KERNEL_ASPACE.pt.clone_from(
@@ -171,7 +171,7 @@ impl MemorySet {
         }
     }
 
-    pub fn load_user(&mut self, elf_data: &[u8]) -> (VirtAddr, VirtAddr) {
+    pub fn load(&mut self, elf_data: &[u8], is_guest: bool) -> (VirtAddr, VirtAddr) {
         use xmas_elf::program::{Flags, SegmentData, Type};
         use xmas_elf::{header, ElfFile};
 
@@ -184,7 +184,7 @@ impl MemorySet {
         // 这个变量仅仅用于检查 app 与操作系统是否匹配
         let expect_arch = if cfg!(target_arch = "riscv64") {
             header::Machine::RISC_V
-        } 
+        }
         // TODO: 加回 x86_64 aarch64 的支持
         // else if cfg!(target_arch = "x86_64") {
         //     header::Machine::X86_64
@@ -238,12 +238,24 @@ impl MemorySet {
             self.insert(area);
             instructions::flush_icache_all();
         }
+
         // user stack
         self.insert(MapArea::new_framed(
             VirtAddr::new(USER_STACK_BASE),
             USER_STACK_SIZE,
             MemFlags::READ | MemFlags::WRITE | MemFlags::USER,
         ));
+
+        // 对于 batchOS 要额外分一些内存给APP
+        if is_guest {
+            const APP_BASE_ADDRESS: usize = 0x80400000;
+            const APP_SIZE_LIMIT: usize = 0x100000;
+            self.insert(MapArea::new_framed(
+                VirtAddr::new(APP_BASE_ADDRESS),
+                APP_SIZE_LIMIT,
+                MemFlags::READ | MemFlags::WRITE | MemFlags::EXECUTE | MemFlags::USER,
+            ));
+        }
 
         let entry = VirtAddr::new(elf.header.pt2.entry_point() as usize);
         let ustack_top = VirtAddr::new(USER_STACK_BASE + USER_STACK_SIZE);

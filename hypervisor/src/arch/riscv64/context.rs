@@ -49,6 +49,7 @@ pub struct TrapFrame {
     pub regs: GeneralRegisters,
     pub sepc: usize,
     pub sstatus: usize,
+    pub hstatus: usize,
 }
 
 impl TrapFrame {
@@ -63,6 +64,24 @@ impl TrapFrame {
             },
             sepc: entry.as_usize(),
             sstatus: SPIE | SUM,
+            hstatus: 0,
+        }
+    }
+
+    pub fn new_guest(entry: VirtAddr, ustack_top: VirtAddr, arg0: usize) -> Self {
+        const SPIE: usize = 1 << 5;
+        const SPP: usize = 1 << 8;
+        const SUM: usize = 1 << 18;
+        const SPV: usize = 1 << 7;
+        Self {
+            regs: GeneralRegisters {
+                a0: arg0,
+                sp: ustack_top.as_usize(),
+                ..Default::default()
+            },
+            sepc: entry.as_usize(),
+            sstatus: SPIE | SUM | SPP,
+            hstatus: SPV,
         }
     }
 
