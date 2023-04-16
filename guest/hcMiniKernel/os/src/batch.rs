@@ -1,5 +1,6 @@
 //! batch subsystem
 
+use crate::sbi::shutdown;
 use crate::sync::UPSafeCell;
 use crate::trap::TrapContext;
 use core::arch::asm;
@@ -69,8 +70,7 @@ impl AppManager {
     unsafe fn load_app(&self, app_id: usize) {
         if app_id >= self.num_app {
             println!("All applications completed!");
-            use crate::board::QEMUExit;
-            crate::board::QEMU_EXIT_HANDLE.exit_success();
+            shutdown()
         }
         println!("[kernel] Loading app_{}", app_id);
         // clear app area
@@ -153,6 +153,7 @@ pub fn run_next_app() -> ! {
         fn __restore(cx_addr: usize);
     }
     unsafe {
+        // println!("Function place at {:#x}", KERNEL_STACK.push_context as usize);
         __restore(KERNEL_STACK.push_context(curr_trap_ctx) as *const _ as usize);
     }
     panic!("Unreachable in batch::run_current_app!");

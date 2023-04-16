@@ -201,17 +201,20 @@ impl MemorySet {
         );
 
         impl From<Flags> for MemFlags {
-            fn from(f: Flags) -> Self {
+            fn from(_f: Flags) -> Self {
                 let mut ret = MemFlags::USER;
-                if f.is_read() {
-                    ret |= MemFlags::READ;
-                }
-                if f.is_write() {
-                    ret |= MemFlags::WRITE;
-                }
-                if f.is_execute() {
-                    ret |= MemFlags::EXECUTE;
-                }
+                // if _f.is_read() {
+                //     ret |= MemFlags::READ;
+                // }
+                // if _f.is_write() {
+                //     ret |= MemFlags::WRITE;
+                // }
+                // if _f.is_execute() {
+                //     ret |= MemFlags::EXECUTE;
+                // }
+                ret |= MemFlags::READ;
+                ret |= MemFlags::WRITE;
+                ret |= MemFlags::EXECUTE;
                 ret
             }
         }

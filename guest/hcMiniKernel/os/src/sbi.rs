@@ -3,6 +3,7 @@
 use core::arch::asm;
 
 const SBI_CONSOLE_PUTCHAR: usize = 1;
+const SBI_SHUTDOWN: usize = 8;
 
 /// general sbi call
 #[inline(always)]
@@ -26,8 +27,9 @@ pub fn console_putchar(c: usize) {
     sbi_call(SBI_CONSOLE_PUTCHAR, c, 0, 0);
 }
 
-use crate::board::QEMUExit;
 /// use sbi call to shutdown the kernel
 pub fn shutdown() -> ! {
-    crate::board::QEMU_EXIT_HANDLE.exit_failure();
+    warn!("Shutting down...");
+    sbi_call(SBI_SHUTDOWN, 0, 0, 0);
+    panic!("It should shutdown!");
 }
