@@ -19,7 +19,7 @@ pub fn main() -> i32 {
     println!("Rust user shell");
     let mut line = [0; MAX_CMD_LEN];
     let mut cursor = 0;
-    print!(">> ");
+    print!("[Application] >> ");
     loop {
         let c = getchar();
         match c {
@@ -44,7 +44,7 @@ pub fn main() -> i32 {
                     }
                     cursor = 0;
                 }
-                print!(">> ");
+                print!("[Application] >> ");
             }
             BS | DL => {
                 if cursor > 0 {

@@ -44,9 +44,62 @@ pub fn get_app_data_by_name(name: &str) -> Option<&'static [u8]> {
 
 pub fn list_apps() {
     println!("/**** APPS ****");
+    println!("");
     let app_count = get_app_count();
     for i in 0..app_count {
         println!("{}", get_app_name(i));
     }
-    println!("**************/");
+}
+
+
+global_asm!(include_str!(concat!(env!("OUT_DIR"), "/link_guest.S")));
+
+extern "C" {
+    fn _guest_count();
+}
+
+pub fn get_guest_count() -> usize {
+    unsafe { (_guest_count as *const u64).read() as usize }
+}
+
+pub fn get_guest_name(guest_id: usize) -> &'static str {
+    unsafe {
+        let guest_0_start_ptr = (_guest_count as *const u64).add(1);
+        assert!(guest_id < get_guest_count());
+        let guest_name = guest_0_start_ptr.add(guest_id * 2).read() as *const u8;
+        let mut len = 0;
+        while guest_name.add(len).read() != b'\0' {
+            len += 1;
+        }
+        let slice = core::slice::from_raw_parts(guest_name, len);
+        core::str::from_utf8(slice).unwrap()
+    }
+}
+
+pub fn get_guest_data(guest_id: usize) -> &'static [u8] {
+    unsafe {
+        let guest_0_start_ptr = (_guest_count as *const u64).add(1);
+        assert!(guest_id < get_guest_count());
+        let guest_start = guest_0_start_ptr.add(guest_id * 2 + 1).read() as usize;
+        let guest_end = guest_0_start_ptr.add(guest_id * 2 + 2).read() as usize;
+        let guest_size = guest_end - guest_start;
+        core::slice::from_raw_parts(guest_start as *const u8, guest_size)
+    }
+}
+
+pub fn get_guest_data_by_name(name: &str) -> Option<&'static [u8]> {
+    let guest_count = get_guest_count();
+    (0..guest_count)
+        .find(|&i| get_guest_name(i) == name)
+        .map(get_guest_data)
+}
+
+#[allow(unused)]
+pub fn list_guests() {
+    println!("/**** GUESTS ****");
+    println!("");
+    let guest_count = get_guest_count();
+    for i in 0..guest_count {
+        println!("{}", get_guest_name(i));
+    }
 }

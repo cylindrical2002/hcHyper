@@ -89,6 +89,9 @@ impl<L: PageTableLevels, PTE: GenericPTE> PageTableImpl<L, PTE> {
         self.root_paddr
     }
 
+    /*
+        新建一个空页表
+     */
     #[allow(dead_code)]
     pub unsafe fn from_root(root_paddr: PhysAddr) -> Self {
         Self {
@@ -247,7 +250,9 @@ const fn p4_index(vaddr: VirtAddr) -> usize {
 
 const fn p3_index(vaddr: VirtAddr) -> usize {
     (vaddr.as_usize() >> (12 + 18)) & (ENTRY_COUNT - 1)
-}
+} 
+// 这里 ENTRY_COUNT 需要能够自动修改
+// 因为 Sv39x4 ENTRY_COUNT = 2048
 
 const fn p2_index(vaddr: VirtAddr) -> usize {
     (vaddr.as_usize() >> (12 + 9)) & (ENTRY_COUNT - 1)

@@ -1,5 +1,7 @@
 use alloc::sync::{Arc, Weak};
 use alloc::{boxed::Box, vec::Vec};
+use riscv::register::hgatp::Hgatp;
+use riscv::register::satp;
 use core::sync::atomic::{AtomicBool, AtomicI32, AtomicU8, AtomicUsize, Ordering};
 
 use super::manager::{TaskLockedCell, TASK_MANAGER};
@@ -132,9 +134,9 @@ impl Task {
 
     pub fn new_kernel(entry: fn(usize) -> usize, arg: usize) -> Arc<Self> {
         let mut t = Self::new_common(TaskId::alloc());
-        t.is_kernel = true;
+        t.is_kernel = true; // 唯一的内核进程？
         t.entry = EntryState::Kernel {
-            pc: entry as usize,
+            pc: entry as usize, // 取出了函数指针
             arg,
         };
         t.ctx.get_mut().init(
@@ -154,7 +156,7 @@ impl Task {
     pub fn new_user(path: &str) -> Arc<Self> {
         let elf_data = loader::get_app_data_by_name(path).expect("new_user: no such app");
         let mut vm = MemorySet::new();
-        let (entry, ustack_top) = vm.load_user(elf_data);
+        let (entry, ustack_top) = vm.load(elf_data, false);
 
         let mut t = Self::new_common(TaskId::alloc());
         t.entry = EntryState::User(Box::new(TrapFrame::new_user(entry, ustack_top, 0)));
@@ -301,6 +303,7 @@ impl<'a> CurrentTask<'a> {
     }
 
     pub fn yield_now(&self) {
+        // switch to next
         TASK_MANAGER.lock().yield_current(self);
     }
 
@@ -324,8 +327,29 @@ impl<'a> CurrentTask<'a> {
         if let Some(elf_data) = loader::get_app_data_by_name(path) {
             let mut vm = self.vm.as_ref().unwrap().lock();
             vm.clear();
-            let (entry, ustack_top) = vm.load_user(elf_data);
+            let (entry, ustack_top) = vm.load(elf_data, false);
             *tf = TrapFrame::new_user(entry, ustack_top, 0);
+            instructions::flush_tlb_all();
+            0
+        } else if let Some(elf_data) = loader::get_guest_data_by_name(path){
+            // 开始运行一个 Guest OS
+            println!("Get a guest OS to run: {}", path);
+            let mut vm = self.vm.as_ref().unwrap().lock();
+            vm.clear();
+
+            // 一张 hypervisor 为 kernel，os 和 user 为 user 表的单页表
+            let (entry, ustack_top) = vm.load(elf_data, true);
+            println!("Load OS successfully");
+
+            // 这里需要注意，进入 VS 态的时候需要将 sstatus 的 SPP 设置为 Supervisor
+            // 需要设置 HStatus，这样 SRET 时才能成功进入 VS-mode
+            *tf = TrapFrame::new_guest(entry, ustack_top, 0);
+
+            // 需要初始化一个 hgatp，batchOS 阶段把 satp 搬过来即可
+            unsafe {
+                let hgatp = Hgatp::from_bits(satp::read().bits());
+                hgatp.write();
+            }
             instructions::flush_tlb_all();
             0
         } else {

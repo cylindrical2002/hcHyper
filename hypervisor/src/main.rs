@@ -1,5 +1,5 @@
-#![cfg_attr(not(test), no_std)]
-#![cfg_attr(not(test), no_main)]
+#![no_std]
+#![no_main]
 #![feature(asm_const, naked_functions)]
 #![feature(panic_info_message, alloc_error_handler)]
 #![feature(const_refs_to_cell)]
@@ -14,10 +14,11 @@ extern crate log;
 
 #[macro_use]
 mod logging;
-
 mod arch;
 mod config;
 mod drivers;
+mod hypercall;
+mod lang_items;
 mod loader;
 mod mm;
 mod percpu;
@@ -27,9 +28,6 @@ mod syscall;
 mod task;
 mod timer;
 mod utils;
-
-#[cfg(not(test))]
-mod lang_items;
 
 fn clear_bss() {
     extern "C" {
@@ -43,35 +41,34 @@ fn clear_bss() {
 }
 
 const LOGO: &str = r"
-NN   NN  iii               bb        OOOOO    SSSSS
-NNN  NN       mm mm mmmm   bb       OO   OO  SS
-NN N NN  iii  mmm  mm  mm  bbbbbb   OO   OO   SSSSS
-NN  NNN  iii  mmm  mm  mm  bb   bb  OO   OO       SS
-NN   NN  iii  mmm  mm  mm  bbbbbb    OOOO0    SSSSS
-              ___    ____    ___    ___
-             |__ \  / __ \  |__ \  |__ \
-             __/ / / / / /  __/ /  __/ /
-            / __/ / /_/ /  / __/  / __/
-           /____/ \____/  /____/ /____/
+ _          _   _                       
+| |__   ___| | | |_   _ _ __   ___ _ __ 
+| '_ \ / __| |_| | | | | '_ \ / _ \ '__|
+| | | | (__|  _  | |_| | |_) |  __/ |   
+|_| |_|\___|_| |_|\__, | .__/ \___|_|   
+                  |___/|_|              
 ";
 
 #[no_mangle]
 pub fn rust_main() -> ! {
     clear_bss();
     drivers::init_early();
-    println!("{}", LOGO);
-    println!(
-        "\
-        arch = {}\n\
-        platform = {}\n\
-        build_mode = {}\n\
-        log_level = {}\n\
-        ",
-        option_env!("ARCH").unwrap_or(""),
-        option_env!("PLATFORM").unwrap_or(""),
-        option_env!("MODE").unwrap_or(""),
-        option_env!("LOG").unwrap_or(""),
-    );
+
+    print!("{}\n", LOGO);
+
+    println!("Start HyperVisor");
+    println!("arch = {}", option_env!("ARCH").unwrap_or(""));
+    println!("platform = {}", option_env!("PLATFORM").unwrap_or(""));
+    println!("build_mode = {}", option_env!("MODE").unwrap_or(""));
+    println!("log_level = {}", option_env!("LOG").unwrap_or(""));
+
+    // 检查是否支持 hypervisor extension
+    // TODO: 改用设备树检查
+    if !arch::detect::detect_h_extension() {
+        println!("no RISC-V hypervisor extension on current environment");
+    } else {
+        println!("RISC-V H ISA Available");
+    }
 
     mm::init_heap_early();
     logging::init();
@@ -79,14 +76,21 @@ pub fn rust_main() -> ! {
 
     arch::init();
     arch::init_percpu();
+    arch::init_hypervisor();
     percpu::init_percpu_early();
-
     mm::init();
     drivers::init();
-
     percpu::init_percpu();
     timer::init();
+
     task::init();
+
+    // 输出 APP 还有 GUEST OS 的名字
+    print!("\n");
     loader::list_apps();
+    println!("");
+    loader::list_guests();
+    print!("\n");
+
     task::run();
 }

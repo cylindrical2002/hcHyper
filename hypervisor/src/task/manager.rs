@@ -11,6 +11,10 @@ pub struct TaskManager {
     scheduler: Scheduler,
 }
 
+/*
+    TaskManager 可以 Manage 一个 Process, 也可以 Manage 一个 Guest OS
+ */
+
 impl TaskManager {
     fn new() -> Self {
         Self {
@@ -38,7 +42,7 @@ impl TaskManager {
             return;
         }
 
-        let curr_ctx_ptr = curr_task.context().as_ptr();
+        let curr_ctx_ptr = curr_task.context().as_ptr(); // 获得 Context 的 PTR
         let next_ctx_ptr = next_task.context().as_ptr();
 
         // Decrement the strong reference count of `curr_task` and `next_task`,
@@ -54,7 +58,7 @@ impl TaskManager {
 
     fn resched(&mut self, curr_task: &CurrentTask) {
         assert!(curr_task.state() != TaskState::Running);
-        if let Some(next_task) = self.scheduler.pick_next_task() {
+        if let Some(next_task) = self.scheduler.pick_next_task() { // 找一个新的 task
             // let `next_task` hold its ownership to avoid clone
             self.switch_to(curr_task, next_task);
         } else {
@@ -66,6 +70,7 @@ impl TaskManager {
         assert!(curr_task.state() == TaskState::Running);
         curr_task.set_state(TaskState::Ready);
         if !curr_task.is_idle() {
+            // Round Robin Push Back
             self.scheduler.push_ready_task_back(curr_task.clone_task());
         }
         self.resched(curr_task);

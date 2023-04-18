@@ -29,11 +29,11 @@ pub fn init() {
     static LOGGER: SimpleLogger = SimpleLogger;
     log::set_logger(&LOGGER).unwrap();
     log::set_max_level(match option_env!("LOG") {
-        Some("error") => LevelFilter::Error,
-        Some("warn") => LevelFilter::Warn,
-        Some("info") => LevelFilter::Info,
-        Some("debug") => LevelFilter::Debug,
-        Some("trace") => LevelFilter::Trace,
+        Some("ERROR") => LevelFilter::Error,
+        Some("WARN") => LevelFilter::Warn,
+        Some("INFO") => LevelFilter::Info,
+        Some("DEBUG") => LevelFilter::Debug,
+        Some("TRACE") => LevelFilter::Trace,
         _ => LevelFilter::Off,
     });
 }
@@ -54,7 +54,7 @@ macro_rules! print {
 macro_rules! println {
     () => { print!("\n") };
     ($fmt: literal $(, $($arg: tt)+)?) => {
-        $crate::logging::print(format_args!(concat!($fmt, "\n") $(, $($arg)+)?));
+        $crate::logging::print(format_args!(concat!("[Hypervisor] ", $fmt, "\n") $(, $($arg)+)?));
     }
 }
 

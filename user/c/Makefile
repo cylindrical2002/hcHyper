@@ -5,9 +5,9 @@ out_dir := ../build/$(ARCH)
 
 cmake_build_args := -DARCH=$(ARCH)
 ifeq ($(MODE), release)
-  cmake_build_args += -DCMAKE_BUILD_TYPE=Release
+	cmake_build_args += -DCMAKE_BUILD_TYPE=Release
 else ifeq ($(MODE), debug)
-  cmake_build_args += -DCMAKE_BUILD_TYPE=Debug
+	cmake_build_args += -DCMAKE_BUILD_TYPE=Debug
 endif
 
 build:

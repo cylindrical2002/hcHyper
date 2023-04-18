@@ -31,6 +31,10 @@ pub fn sys_fork(tf: &TrapFrame) -> isize {
     pid
 }
 
+// 应当有一个对应的 hyper_exec
+/*
+    SimpleBatchOS 版本中唯一的一个需要更改的 syscall
+ */
 pub fn sys_exec(path: UserInPtr<u8>, tf: &mut TrapFrame) -> isize {
     let (path_buf, len) = path.read_str::<MAX_STR_LEN>();
     let path = core::str::from_utf8(&path_buf[..len]).unwrap();

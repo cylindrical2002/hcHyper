@@ -1,0 +1,12 @@
+[package]
+name = "hcminikernel"
+version = "0.2.0"
+authors = ["Yifan Wu <shinbokuow@163.com>", "Yue Chen <chen-yue20@mails.tsinghua.edu.cn>"]
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+lazy_static = { version = "1.4.0", features = ["spin_no_std"] }
+log = "0.4"
+riscv = { git = "https://gitee.com/rcore-os/riscv", features = ["inline-asm"] }
