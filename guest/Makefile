@@ -6,7 +6,7 @@ build_dir:
 	@mkdir -p $(build_dir)
 
 hcminikernel: build_dir
-	@make -C hcMiniKernel/os build
+	@make -C hcMiniKernel/os build LOG=TRACE
 	@echo "finished building hcMiniKernel"
 
 clean:

@@ -44,7 +44,7 @@ pub fn main() -> i32 {
                     }
                     cursor = 0;
                 }
-                print!(">> ");
+                print!("[Application] >> ");
             }
             BS | DL => {
                 if cursor > 0 {

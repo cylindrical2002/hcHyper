@@ -1,6 +1,7 @@
-use crate::arch::{TrapFrame, instructions};
+use crate::{arch::{TrapFrame, instructions}, drivers::misc::sbi};
 
-const HYPERCALL_EXEC: usize = 59;
+const HYPERCALL_PUTCHAR: usize = 1;
+const HYPERCALL_SHUTDOWN: usize = 8;
 
 // TODO: 完善所有的 hypercall
 pub fn hypercall(
@@ -17,11 +18,16 @@ pub fn hypercall(
         hypercall_id, arg0, arg1, arg2
     );
     let ret = match hypercall_id {
-        HYPERCALL_EXEC => {
+        HYPERCALL_PUTCHAR => {
+            sbi::console_putchar(arg0);
             0
         }
+        HYPERCALL_SHUTDOWN => {
+            println!("Guest OS Shutdown");
+            crate::task::current().exit(0);
+        }
         _ => {
-            warn!("Unsupported syscall_id: {}", hypercall_id);
+            warn!("Unsupported hypercall_id: {}", hypercall_id);
             crate::task::current().exit(-1);
         }
     };
