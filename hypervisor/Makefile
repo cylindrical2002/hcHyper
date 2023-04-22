@@ -31,7 +31,7 @@ export LOG
 make_args := ARCH=$(ARCH) PLATFORM=$(PLATFORM) MODE=$(MODE) LOG=$(LOG)
 
 # Paths
-target := ../targets/$(ARCH).json
+target := ./targets/$(ARCH).json
 kernel_elf := target/$(ARCH)/$(MODE)/hchyper
 kernel_bin := $(kernel_elf).bin
 
