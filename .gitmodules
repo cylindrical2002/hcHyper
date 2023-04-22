@@ -1,0 +1,3 @@
+[submodule "guest/hcMiniKernel"]
+	path = guest/hcMiniKernel
+	url = git@github.com:cylindrical2002/hcMiniKernel.git
