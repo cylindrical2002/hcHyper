@@ -1,5 +1,0 @@
-default
-fp_simd
-alloc
-paging
-fs
