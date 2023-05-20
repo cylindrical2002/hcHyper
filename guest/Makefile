@@ -1,6 +1,15 @@
-build_dir := build/riscv64/
+ARCH = riscv64
 
-build: hcminikernel
+build_dir := build/$(ARCH)/
+
+guests := 
+
+ifeq ($(ARCH), riscv64) 
+	guests += hcminikernel
+endif
+
+build: $(guests)
+	@echo "build $(guests) successful"
 
 build_dir:
 	@mkdir -p $(build_dir)
