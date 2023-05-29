@@ -1,0 +1,1 @@
+make A=apps/hv ARCH=riscv64 SMP=1 HV=y GRAPHIC=n run
