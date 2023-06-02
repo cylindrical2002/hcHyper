@@ -1,1 +1,2 @@
 make A=apps/hv ARCH=riscv64 SMP=1 HV=y GRAPHIC=n run
+make A=apps/hv ARCH=riscv64 SMP=1 HV=y GRAPHIC=n GUEST=rCore-Tutorial-v3 run
