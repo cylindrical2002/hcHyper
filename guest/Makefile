@@ -2,23 +2,6 @@ ARCH = riscv64
 
 build_dir := build/$(ARCH)/
 
-guests := 
-
-ifeq ($(ARCH), riscv64) 
-	guests += hcminikernel
-endif
-
-ifeq ($(ARCH), x86_64)
-	guests += nimbos
-endif
-
-ifeq ($(ARCH), riscv64)
-	guests += linux
-endif
-
-build: $(guests)
-	@echo "build $(guests) successful"
-
 build_dir:
 	@mkdir -p $(build_dir)
 
@@ -40,4 +23,7 @@ rCore-Tutorial-v3: build_dir
 
 clean:
 	@make -C hcMiniKernel/os clean
-	@rm -rf $(build_dir)
+	@make -C nimbos/kernel clean
+	@rm linux/linux.dtb
+	@rm rCore-Tutorial-v3/rCore-Tutorial-v3.dtb
+	@rm -rf build/
