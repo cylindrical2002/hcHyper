@@ -1,22 +1,16 @@
 ARCH = riscv64
 
-build_dir := build/$(ARCH)/
-
-build_dir:
-	@mkdir -p $(build_dir)
-
-hcminikernel: build_dir
-	@mkdir $(build_dir)/hcminikernel/
+hcminikernel:
+	@mkdir hcMiniKernel/$(ARCH)-runtime
 	@make -C hcMiniKernel/os build LOG=TRACE
-	@echo "finished building hcMiniKernel"
 
 nimbos: build_dir
-	@mkdir $(build_dir)/nimbos/
+	@mkdir nimbos/$(ARCH)-runtime
 	@make -C nimbos/user build
 	@make -C nimbos/kernel GUEST=on
 
 linux: build_dir
-	dtc -O dtb -o linux/linux.dtb linux/linux.dts
+	@make -C linux build
 
 rCore-Tutorial-v3: build_dir
 	dtc -O dtb -o rCore-Tutorial-v3/rCore-Tutorial-v3.dtb rCore-Tutorial-v3/rCore-Tutorial-v3.dts
@@ -24,5 +18,5 @@ rCore-Tutorial-v3: build_dir
 clean:
 	@make -C hcMiniKernel/os clean
 	@make -C nimbos/kernel clean
-	@rm linux/$(ARCH)-runtime/linux.dtb
-	@rm rCore-Tutorial-v3/$(ARCH)-runtime/rCore-Tutorial-v3.dtb
+	@make -C linux clean
+	@make -C rCore-Tutorial-v3 clean
