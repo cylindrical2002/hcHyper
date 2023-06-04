@@ -1,3 +1,7 @@
+# For Linux, guests have been built
+!*-runtime/
+
 *.dtb
-*.elf
+
+# Too BIG FileSystem Image
 rootfs.img

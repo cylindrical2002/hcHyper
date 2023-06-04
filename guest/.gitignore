@@ -1,1 +1,4 @@
-build/
+# For rCore-Tutorial-v3, guest has been built
+*-runtime/
+
+*.dtb

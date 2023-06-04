@@ -24,6 +24,5 @@ rCore-Tutorial-v3: build_dir
 clean:
 	@make -C hcMiniKernel/os clean
 	@make -C nimbos/kernel clean
-	@rm linux/linux.dtb
-	@rm rCore-Tutorial-v3/rCore-Tutorial-v3.dtb
-	@rm -rf build/
+	@rm linux/$(ARCH)-runtime/linux.dtb
+	@rm rCore-Tutorial-v3/$(ARCH)-runtime/rCore-Tutorial-v3.dtb
