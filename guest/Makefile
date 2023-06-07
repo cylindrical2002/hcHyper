@@ -1,19 +1,21 @@
 ARCH = riscv64
 
+.PHONY: linux hcminikernel nimbos rCore-Tutorial-v3 clean
+
 hcminikernel:
 	@mkdir hcMiniKernel/$(ARCH)-runtime
 	@make -C hcMiniKernel/os build LOG=TRACE
 
-nimbos: build_dir
+nimbos:
 	@mkdir nimbos/$(ARCH)-runtime
 	@make -C nimbos/user build
 	@make -C nimbos/kernel GUEST=on
 
-linux: build_dir
+linux:
 	@make -C linux build
 
-rCore-Tutorial-v3: build_dir
-	dtc -O dtb -o rCore-Tutorial-v3/rCore-Tutorial-v3.dtb rCore-Tutorial-v3/rCore-Tutorial-v3.dts
+rCore-Tutorial-v3:
+	@make -C rCore-Tutorial-v3 build
 
 clean:
 	@make -C hcMiniKernel/os clean
